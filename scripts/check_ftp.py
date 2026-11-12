@@ -3,6 +3,7 @@
 import ftplib
 import os
 import ssl
+import socket
 import ipaddress
 import socket
 
@@ -17,6 +18,24 @@ def run():
     username=required("FTP_USERNAME")
     password=required("FTP_PASSWORD")
     secure=os.getenv("FTP_SECURE","true").lower()
+    # Hostinger's Plan Details screenshot identifies the server as 'server1221'.
+    # The FTPS certificate issued by the endpoint is valid for *.hstgr.io.
+    # Do not send credentials unless that name resolves to the SAME verified FTP IP.
+    if secure == "true":
+        verified_ip="195.35.15.205"
+        verified_name="server1221.hstgr.io"
+        if host == verified_ip:
+            addresses={item[4][0] for item in socket.getaddrinfo(verified_name, 21, type=socket.SOCK_STREAM)}
+            print("Checked Hostinger server hostname", verified_name, "resolves to", sorted(addresses))
+            if verified_ip not in addresses:
+                raise RuntimeError("Verified server hostname does not resolve to the FTP IP shown in Hostinger; stop before login.")
+            host=verified_name
+        elif host != verified_name:
+            raise RuntimeError("FTP_SERVER must be the verified IP or server1221.hstgr.io; stop before login.")
+        else:
+            addresses={item[4][0] for item in socket.getaddrinfo(host, 21, type=socket.SOCK_STREAM)}
+            if verified_ip not in addresses:
+                raise RuntimeError("FTPS hostname does not match the expected Hostinger FTP IP; stop before login.")
     if secure not in ("true","false"):
         raise RuntimeError("FTP_SECURE must be 'true' or 'false'")
     if secure=="true":
