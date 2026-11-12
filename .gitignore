@@ -1,0 +1,9 @@
+# Do not commit sensitive Firebase, hosting or service-account credentials
+.env
+.env.*
+!.env.example
+*firebase-adminsdk*.json
+*service-account*.json
+serviceAccountKey*.json
+node_modules/
+.DS_Store
