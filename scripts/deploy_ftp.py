@@ -4,7 +4,7 @@
 FTPS first. Plain FTP only if explicitly selected; no automatic downgrade.
 No server-side delete and no guessing of multi-site document roots.
 """
-import ftplib, os, posixpath, re, ssl
+import ftplib, os, posixpath, re, ssl, socket, ipaddress
 from pathlib import Path
 
 DIST = Path(__file__).resolve().parents[1] / "dist"
@@ -75,6 +75,14 @@ def main():
     if secure not in ("true", "false"):
         raise RuntimeError("FTP_SECURE must be true or false.")
     if secure == "true":
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            resolved={x[4][0] for x in socket.getaddrinfo(host,21,type=socket.SOCK_STREAM)}
+            if "195.35.15.205" not in resolved:
+                raise RuntimeError("FTP hostname does not map to the confirmed Hostinger server IP. Stop to verify Hosting Plan Details.")
+        else:
+            raise RuntimeError("The Hostinger FTPS certificate is issued to *.hstgr.io, not 195.35.15.205. Use the matching Server Name from Hosting Plan Details in FTP_SERVER.")
         ftp = ftplib.FTP_TLS(timeout=45, context=ssl.create_default_context())
     else:
         print("Warning: FTP_SECURE=false transmits FTP credentials without transport encryption.")

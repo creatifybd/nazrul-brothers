@@ -54,3 +54,9 @@ GitHub → Actions → **Deploy Nazrul & Brothers to Hostinger** → Run workflo
 - When Saturday's custom domain is connected, update the `SITE_URL` variable and Firebase Authorized Domains; do not change the confirmed FTP target unless Hostinger's actual directory changes.
 
 Official Hostinger FTP account instructions: https://www.hostinger.com/support/1583246-how-to-create-additional-ftp-accounts-in-hostinger/
+
+## FTPS certificate mismatch diagnosed on 12 November 2026
+
+A read-only diagnostic run confirmed `CERTIFICATE_VERIFY_FAILED: IP address mismatch` when `FTP_SERVER=195.35.15.205` because the presented TLS certificate covers `*.hstgr.io` and `hstgr.io` rather than the bare IP. This is **not** proof of bad FTP credentials. Do not disable TLS certificate verification.
+
+In Hostinger hPanel → **Hosting plan → Plan Details → Server Details → Server Name**, identify the precise `*.hstgr.io` hostname for the hosting plan containing the Nazrul & Brothers website. Do **not** reuse a hostname from Joytun or Orbit without checking. Replace GitHub's **FTP_SERVER secret** with that exact hostname. Our test and deploy scripts require DNS for the new hostname to resolve to the known FTP IP `195.35.15.205`; otherwise they stop without sending credentials. Retest **Inspect Hostinger FTP (read-only)**. Leave `HOSTINGER_DEPLOY_ENABLED` unset until FTP login and document-root isolation have been confirmed.

@@ -3,6 +3,8 @@
 import ftplib
 import os
 import ssl
+import ipaddress
+import socket
 
 def required(name):
     value=os.getenv(name,"").strip()
@@ -17,6 +19,15 @@ def run():
     secure=os.getenv("FTP_SECURE","true").lower()
     if secure not in ("true","false"):
         raise RuntimeError("FTP_SECURE must be 'true' or 'false'")
+    if secure=="true":
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            resolved={x[4][0] for x in socket.getaddrinfo(host, 21, type=socket.SOCK_STREAM)}
+            if "195.35.15.205" not in resolved:
+                raise RuntimeError("FTP_SERVER hostname does not resolve to the expected Hostinger FTP server IP (195.35.15.205). Check Hosting Plan Details.")
+        else:
+            raise RuntimeError("Hostinger FTPS certificate covers *.hstgr.io, not the IP address. Use the exact Server Name shown in Hosting Plan Details as FTP_SERVER.")
     ftp=ftplib.FTP_TLS(timeout=30,context=ssl.create_default_context()) if secure=="true" else ftplib.FTP(timeout=30)
     try:
         ftp.connect(host,21)
