@@ -35,3 +35,7 @@ Then open http://localhost:8000/.
 3. Check responsive design on real Android/iOS devices and desktop browsers; test keyboard navigation.
 4. Confirm HTTPS and Hostinger directory mapping for the newly purchased domain.
 5. Enable canonical, sitemap, indexing and analytics only after approval.
+
+## Domain-free staging and Firebase
+
+Read [DEPLOYMENT.md](./DEPLOYMENT.md). The secure admin scaffold is available at `/admin/` once deployed, but Firebase requires a dedicated project, its public web config, authorized Hostinger hostname, deployed Firestore rules and manually approved admin UID. Hosting and Firebase are not yet connected.
