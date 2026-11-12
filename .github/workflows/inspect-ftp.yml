@@ -30,6 +30,23 @@ jobs:
           timeout 18 openssl s_client -starttls ftp -connect "${FTP_SERVER}:21" -showcerts </dev/null 2>/dev/null | openssl x509 -noout -subject -ext subjectAltName -dates
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      - name: Resolve documented Hostinger server name safely (no credentials)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import socket
+          candidates = ("server1221.hstgr.io", "srv1221.hstgr.io", "server1221.hostinger.com", "srv1221.hostinger.com", "coral-oyster-225966.hostingersite.com")
+          for name in candidates:
+              try:
+                  addresses = sorted({entry[4][0] for entry in socket.getaddrinfo(name,21,type=socket.SOCK_STREAM)})
+                  print(f"DNS {name}: {', '.join(addresses)}")
+              except OSError as e:
+                  print(f"DNS {name}: unavailable ({type(e).__name__})")
+          try:
+              print("Reverse FTP IP:", socket.gethostbyaddr("195.35.15.205")[0])
+          except OSError as e:
+              print("Reverse FTP IP: unavailable", type(e).__name__)
+          PY
       - name: Probe without writing any files
         run: python3 scripts/check_ftp.py
         env:
