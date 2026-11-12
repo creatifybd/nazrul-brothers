@@ -1,0 +1,63 @@
+name: Deploy Nazrul & Brothers to Hostinger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - '**/*.html'
+      - 'assets/**'
+      - 'favicon.svg'
+      - 'robots.txt'
+      - '.github/workflows/deploy-hostinger.yml'
+      - 'scripts/build_deploy.py'
+      - 'scripts/deploy_ftp.py'
+      - 'scripts/verify_deploy.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nazrul-brothers-hostinger
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate site without accessing Hostinger
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Validate static pages and build public upload package
+        run: python3 scripts/build_deploy.py
+
+  deploy:
+    name: Deploy only after Hostinger FTP scope is confirmed
+    needs: validate
+    if: ${{ vars.HOSTINGER_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Build public package
+        run: python3 scripts/build_deploy.py
+      - name: Publish only to the scoped Nazrul & Brothers website
+        run: python3 scripts/deploy_ftp.py
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SERVER_DIR: ${{ vars.FTP_SERVER_DIR }}
+          FTP_SECURE: ${{ vars.FTP_SECURE || 'true' }}
+          HOSTINGER_FTP_SCOPED: ${{ vars.HOSTINGER_FTP_SCOPED }}
+      - name: Verify exact live commit over HTTPS
+        run: python3 scripts/verify_deploy.py
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://coral-oyster-225966.hostingersite.com' }}
