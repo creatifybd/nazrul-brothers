@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /
+# DEVELOPMENT PREVIEW — indexing intentionally disabled until launch approval.
