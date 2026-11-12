@@ -3,7 +3,7 @@
 export const firebaseConfig = {
   apiKey: "",
   authDomain: "",
-  projectId: "",
+  projectId: "nazrul-and-brothers",
   appId: "",
   measurementId: ""
 };
