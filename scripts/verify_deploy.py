@@ -21,6 +21,11 @@ for attempt in range(1, 4):
             raise ValueError("The live deployment.json does not match this commit.")
         for route, expected in [
           ("/", "Nazrul"),
+          ("/about/", "Our Story"),
+          ("/products/", "Our Signature Products"),
+          ("/products/aeroplane-alkatra/", "Aeroplane Alkatra"),
+          ("/products/orbit-steel-care/", "Orbit Steel Care"),
+          ("/contact/", "Contact &amp; Location"),
           ("/admin/", "Content Admin"),
           ("/products/urojahaj-alkatra/", "Urojahaj Alkatra")
         ]:
