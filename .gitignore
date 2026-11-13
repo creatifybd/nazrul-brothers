@@ -6,4 +6,7 @@
 *service-account*.json
 serviceAccountKey*.json
 node_modules/
+dist/
+__pycache__/
+*.pyc
 .DS_Store

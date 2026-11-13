@@ -11,6 +11,8 @@ def required(name):
     return value
 
 def run():
+    if required("HOSTINGER_FTP_PASSWORD_ROTATED") != "true":
+        raise RuntimeError("Rotate the exposed password and update GitHub before authenticating.")
     host=required("FTP_SERVER")
     username=required("FTP_USERNAME")
     password=required("FTP_PASSWORD")

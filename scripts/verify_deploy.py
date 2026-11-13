@@ -21,11 +21,23 @@ for attempt in range(1, 4):
             raise ValueError("The live deployment.json does not match this commit.")
         for route, expected in [
           ("/", "Nazrul"),
+          ("/about/", "Nazrul"),
+          ("/products/", "Aeroplane Alkatra"),
+          ("/products/aeroplane-alkatra/", "Aeroplane Alkatra"),
           ("/admin/", "Content Admin"),
-          ("/products/urojahaj-alkatra/", "Urojahaj Alkatra")
+          ("/products/urojahaj-alkatra/", "Urojahaj Alkatra"),
+          ("/products/orbit-steel-care/", "Orbit Steel Care"),
+          ("/contact/", "Nazrul")
         ]:
-            if expected not in fetch(route):
+            html = fetch(route)
+            if expected not in html or 'noindex,nofollow,noarchive' not in html:
                 raise ValueError("Incorrect live HTML at "+route)
+        for asset in ("/assets/css/site.css", "/assets/css/brand.css", "/assets/js/site.js",
+                      "/assets/js/firebase-config.js", "/assets/js/firebase-public.js",
+                      "/assets/js/firebase-admin.js", "/assets/js/firebase-analytics.js"):
+            body = fetch(asset)
+            if not body.strip() or '<html' in body.lower() or '<!doctype' in body.lower():
+                raise ValueError("Missing or invalid live asset at "+asset)
         print("Verified live Nazrul & Brothers deployment:", sha, "at", url)
         raise SystemExit(0)
     except Exception as err:
