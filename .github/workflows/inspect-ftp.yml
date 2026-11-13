@@ -1,13 +1,7 @@
 name: Inspect Hostinger FTP (read-only)
 
 on:
-  # A read-only probe runs once when this diagnostic workflow is updated.
-  # No schedule and no deployment from this workflow.
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/inspect-ftp.yml'
-      - 'scripts/check_ftp.py'
+  # Manual only: credentials are not probed automatically after code changes.
   workflow_dispatch:
 
 permissions:
@@ -53,4 +47,5 @@ jobs:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          HOSTINGER_FTP_PASSWORD_ROTATED: ${{ vars.HOSTINGER_FTP_PASSWORD_ROTATED }}
           FTP_SECURE: ${{ vars.FTP_SECURE || 'true' }}

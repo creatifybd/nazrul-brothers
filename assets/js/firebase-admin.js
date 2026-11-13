@@ -12,21 +12,25 @@ if(!firebaseConfigured){
  status("Firebase project has not been connected. Add your public Web App config in /assets/js/firebase-config.js, enable Google sign-in and deploy the Firestore rules. The public website still works normally.");
 }else{
  try{
-  const [{initializeApp},{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged},{getFirestore,doc,getDoc,setDoc,serverTimestamp}]=await Promise.all([
+  const [{initializeApp},{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,setPersistence,browserSessionPersistence},{getFirestore,doc,getDoc,setDoc,serverTimestamp}]=await Promise.all([
    import("https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js"),
    import("https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js"),
    import("https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js")
   ]);
   const auth=getAuth(initializeApp(firebaseConfig)),db=getFirestore(auth.app);
+  await setPersistence(auth,browserSessionPersistence);
   const provider=new GoogleAuthProvider();
-  let currentUser=null;
+  provider.setCustomParameters({prompt:"select_account"});
+  let currentUser=null,loadVersion=0,authVersion=0,loadedPath=null;
   el("sign-in").addEventListener("click",async()=>{
     el("sign-in").disabled=true;
     try{await signInWithPopup(auth,provider);}
     catch(err){status("Google sign-in failed. Confirm this hostname is in Firebase Authentication Authorized domains. "+(err.code||""),"error");}
     finally{el("sign-in").disabled=false;}
   });
-  el("sign-out").addEventListener("click",()=>signOut(auth));
+  const logout=async()=>{try{await signOut(auth);}catch(err){status("Sign out failed. Please try again. "+(err.code||""),"error");}};
+  el("sign-out").addEventListener("click",logout);
+  el("switch-account").addEventListener("click",logout);
   const buildFields=(path,values={})=>{
    const box=el("editor-fields");box.replaceChildren();
    for(const [key,label,max] of fields[path]){
@@ -42,39 +46,50 @@ if(!firebaseConfigured){
   };
   const load=async()=>{
     if(!currentUser)return;
+    const version=++loadVersion,user=currentUser;
+    loadedPath=null;el("editor-fields").replaceChildren();
     const path=el("doc-choice").value,[collection,id]=path.split("/");
     el("save-state").textContent="Loading…";el("save").disabled=true;
     try{
-      const snap=await getDoc(doc(db,collection,id));buildFields(path,snap.exists()?snap.data():{});
+      const snap=await getDoc(doc(db,collection,id));
+      if(version!==loadVersion||currentUser!==user)return;
+      buildFields(path,snap.exists()?snap.data():{});loadedPath=path;
       el("save-state").textContent=snap.exists()?"Loaded.":"New draft; not published.";
     }catch(err){
-      buildFields(path);el("save-state").textContent="Cannot load: "+(err.code||"error");
+      if(version!==loadVersion||currentUser!==user)return;
+      el("save-state").textContent="Cannot load: "+(err.code||"error");
       status("Content loading failed. Check Firestore rules and administrator permissions.","error");
-    }finally{el("save").disabled=false;}
+    }finally{if(version===loadVersion)el("save").disabled=loadedPath!==path;}
   };
   el("doc-choice").addEventListener("change",load);
   el("edit-form").addEventListener("submit",async event=>{
     event.preventDefault();if(!currentUser)return;
     const path=el("doc-choice").value,[collection,id]=path.split("/");
+    if(loadedPath!==path)return;
     const values={published:el("publish").checked,updatedBy:currentUser.uid,updatedAt:serverTimestamp()};
     for(const [key] of fields[path])values[key]=el("field-"+key).value.trim();
     if(values.published&&collection==="products"&&(!values.summary||!values.description)){
       el("save-state").textContent="Both product fields are required to publish.";return;
     }
-    el("save").disabled=true;el("save-state").textContent="Saving…";
+    el("save").disabled=true;el("doc-choice").disabled=true;el("save-state").textContent="Saving…";
     try{
       await setDoc(doc(db,collection,id),values,{merge:true});
       el("save-state").textContent=values.published?"Published.":"Draft saved.";
       status("Changes securely saved to Firestore.","success");
     }catch(err){el("save-state").textContent="Save failed: "+(err.code||"error");status("Save failed. Verify rules and admin access.","error");}
-    finally{el("save").disabled=false;}
+    finally{el("save").disabled=!currentUser||loadedPath!==path;el("doc-choice").disabled=false;}
   });
   onAuthStateChanged(auth,async user=>{
+   const version=++authVersion;
+   ++loadVersion;currentUser=null;loadedPath=null;
+   el("editor-fields").replaceChildren();el("save").disabled=true;
+   show("switch-account",Boolean(user));
    show("app-panel",false);
    if(!user){currentUser=null;show("login-panel",true);status("Firebase configured. Please sign in to continue.");return;}
    status("Verifying administrator privileges…");
    try{
     const admin=await getDoc(doc(db,"adminUsers",user.uid));
+    if(version!==authVersion)return;
     if(admin.exists()&&admin.data().active===true){
       currentUser=user;show("login-panel",false);show("app-panel",true);
       el("signed-user").textContent=user.email||user.uid;
@@ -83,7 +98,7 @@ if(!firebaseConfigured){
       currentUser=null;show("login-panel",true);
       status("Account not authorized. Your Firebase Auth UID is: "+user.uid,"error");
     }
-   }catch(err){currentUser=null;show("login-panel",true);status("Cannot verify access: "+(err.code||"error"),"error");}
+   }catch(err){if(version!==authVersion)return;currentUser=null;show("login-panel",true);status("Cannot verify access: "+(err.code||"error"),"error");}
   });
  }catch(err){status("Firebase SDK could not be loaded. Verify HTTPS, connectivity and config.","error");}
 }

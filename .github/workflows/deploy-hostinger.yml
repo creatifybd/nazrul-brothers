@@ -13,6 +13,7 @@ on:
       - 'scripts/build_deploy.py'
       - 'scripts/deploy_ftp.py'
       - 'scripts/verify_deploy.py'
+      - 'scripts/test_deploy_safety.py'
   workflow_dispatch:
 
 permissions:
@@ -33,12 +34,14 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate static pages and build public upload package
-        run: python3 scripts/build_deploy.py
+        run: |
+          python3 scripts/test_deploy_safety.py
+          python3 scripts/build_deploy.py
 
   deploy:
     name: Deploy only after Hostinger FTP scope is confirmed
     needs: validate
-    if: ${{ vars.HOSTINGER_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.ref == 'refs/heads/main' && vars.HOSTINGER_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -57,6 +60,7 @@ jobs:
           FTP_SERVER_DIR: ${{ vars.FTP_SERVER_DIR }}
           FTP_SECURE: ${{ vars.FTP_SECURE || 'true' }}
           HOSTINGER_FTP_SCOPED: ${{ vars.HOSTINGER_FTP_SCOPED }}
+          HOSTINGER_FTP_PASSWORD_ROTATED: ${{ vars.HOSTINGER_FTP_PASSWORD_ROTATED }}
       - name: Verify exact live commit over HTTPS
         run: python3 scripts/verify_deploy.py
         env:

@@ -28,7 +28,8 @@ Under **Repository variables**, add:
 | --- | --- |
 | `FTP_SERVER_DIR` | Exact Hostinger FTP path to this site's document root, e.g. the scoped account's `/public_html` or `/`, **not an assumed shared path** |
 | `HOSTINGER_FTP_SCOPED` | `true` only after verifying the FTP account is limited to Nazrul's folder |
-| `FTP_SECURE` | `true` for explicit FTPS if your Hostinger server supports it; `false` only when Hostinger supports plain FTP exclusively, acknowledging lower security |
+| `FTP_SECURE` | `true` only. Plaintext FTP is rejected. |
+| `HOSTINGER_FTP_PASSWORD_ROTATED` | `true` only after the previously exposed dedicated FTP password is rotated and `FTP_PASSWORD` is updated. |
 | `SITE_URL` | `https://coral-oyster-225966.hostingersite.com` |
 | `HOSTINGER_DEPLOY_ENABLED` | `true` **LAST**, after all values and permissions are verified |
 
@@ -48,7 +49,7 @@ GitHub → Actions → **Deploy Nazrul & Brothers to Hostinger** → Run workflo
 - No `schedule` or `pull_request_target`; only relevant main-branch pushes or an authorized manual dispatch.
 - Each deployment waits for the previous run rather than canceling an upload.
 - Separate Hostinger FTP account with limited folder access is essential.
-- FTPS is preferred; plain FTP is not encrypted. Consider SFTP if your Hostinger hosting plan supports it.
+- Certificate-verified FTPS is mandatory. SFTP requires a separately reviewed account scope and a trusted Hostinger host-key fingerprint.
 - No bulk cleanup / dangerous-clean-slate or remote file deletion.
 - Staging website stays `noindex` until the company approves the official logo, product images and content.
 - When Saturday's custom domain is connected, update the `SITE_URL` variable and Firebase Authorized Domains; do not change the confirmed FTP target unless Hostinger's actual directory changes.
@@ -60,3 +61,13 @@ Official Hostinger FTP account instructions: https://www.hostinger.com/support/1
 A read-only diagnostic run confirmed `CERTIFICATE_VERIFY_FAILED: IP address mismatch` when `FTP_SERVER=195.35.15.205` because the presented TLS certificate covers `*.hstgr.io` and `hstgr.io` rather than the bare IP. This is **not** proof of bad FTP credentials. Do not disable TLS certificate verification.
 
 In Hostinger hPanel → **Hosting plan → Plan Details → Server Details → Server Name**, identify the precise `*.hstgr.io` hostname for the hosting plan containing the Nazrul & Brothers website. Do **not** reuse a hostname from Joytun or Orbit without checking. Replace GitHub's **FTP_SERVER secret** with that exact hostname. Our test and deploy scripts require DNS for the new hostname to resolve to the known FTP IP `195.35.15.205`; otherwise they stop without sending credentials. Retest **Inspect Hostinger FTP (read-only)**. Leave `HOSTINGER_DEPLOY_ENABLED` unset until FTP login and document-root isolation have been confirmed.
+
+## Verified follow-up: 13 November 2026
+
+hPanel shows Business Web Hosting, server name `server1221`, FTP IP `195.35.15.205`, and dedicated account `u104160495.nazruldeploy` restricted to `/home/u104160495/domains/coral-oyster-225966.hostingersite.com/public_html`.
+
+The account's displayed active hostname `ftp.coral-oyster-225966.hostingersite.com` resolves to `free.cdn.hstgr.net` and CDN addresses `147.79.69.55` / `88.222.243.128`, not the FTP server. A no-credential FTPS connection timed out. The most recent diagnostic run failed to obtain a certificate before the login step. Do not treat this as a password failure.
+
+SSH is inactive. hPanel lists port `65002` and hosting-account username `u104160495`, not the dedicated site FTP username. Do not enable account-wide SSH deployment as a substitute for verifying site isolation. Obtain a certificate-matching endpoint from Hostinger or an explicitly approved isolated SFTP arrangement. No TLS/SSH verification bypass is acceptable.
+
+The diagnostic workflow is manual-only. Before authenticating it now requires the password-rotation gate. If Hostinger supplies a different verified FTPS hostname, update the diagnostic's explicit hostname guard after verifying its certificate and address; do not blindly retry the current CDN endpoint.

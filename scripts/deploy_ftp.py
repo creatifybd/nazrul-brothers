@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Deploy public files using the isolated Nazrul & Brothers FTP account only.
 
-FTPS first. Plain FTP only if explicitly selected; no automatic downgrade.
+Certificate-verified FTPS only; plaintext FTP is never permitted.
 No server-side delete and no guessing of multi-site document roots.
 """
 import ftplib, os, posixpath, re, ssl, socket, ipaddress
 from pathlib import Path
 
 DIST = Path(__file__).resolve().parents[1] / "dist"
+EXPECTED_USER = "u104160495.nazruldeploy"
+SITE_ROOT = "/home/u104160495/domains/coral-oyster-225966.hostingersite.com/public_html"
 
 def required(key):
     result = os.getenv(key, "").strip()
@@ -23,7 +25,10 @@ def destination_path(value):
         raise RuntimeError("Unsafe FTP_SERVER_DIR segments.")
     if any(s in value.lower() for s in ("joytun", "orbit-lubricants", "creatifybd")):
         raise RuntimeError("Refusing a directory associated with another company.")
-    return "/" + "/".join(segments) if segments else "/"
+    normalized = "/" + "/".join(segments) if segments else "/"
+    if normalized not in {"/", "/public_html", SITE_ROOT}:
+        raise RuntimeError("FTP_SERVER_DIR is not an approved Nazrul site root.")
+    return normalized
 
 def remote_guard(ftp):
     names = {posixpath.basename(p.rstrip("/")) for p in ftp.nlst()}
@@ -69,11 +74,15 @@ def publish(ftp, root, local, run_id):
 def main():
     if required("HOSTINGER_FTP_SCOPED") != "true":
         raise RuntimeError("Confirm a dedicated FTP account limited to this site's directory before enabling.")
+    if required("HOSTINGER_FTP_PASSWORD_ROTATED") != "true":
+        raise RuntimeError("Rotate the previously exposed FTP password and update the GitHub secret first.")
     host, user, password = required("FTP_SERVER"), required("FTP_USERNAME"), required("FTP_PASSWORD")
+    if user != EXPECTED_USER:
+        raise RuntimeError("Only the dedicated Nazrul deployment account is permitted.")
     path = destination_path(required("FTP_SERVER_DIR"))
     secure = os.getenv("FTP_SECURE", "true").lower()
-    if secure not in ("true", "false"):
-        raise RuntimeError("FTP_SECURE must be true or false.")
+    if secure != "true":
+        raise RuntimeError("Only certificate-verified FTPS is permitted; plaintext FTP is disabled.")
     if secure == "true":
         try:
             ipaddress.ip_address(host)
@@ -84,9 +93,6 @@ def main():
         else:
             raise RuntimeError("The Hostinger FTPS certificate is issued to *.hstgr.io, not 195.35.15.205. Use the matching Server Name from Hosting Plan Details in FTP_SERVER.")
         ftp = ftplib.FTP_TLS(timeout=45, context=ssl.create_default_context())
-    else:
-        print("Warning: FTP_SECURE=false transmits FTP credentials without transport encryption.")
-        ftp = ftplib.FTP(timeout=45)
     try:
         ftp.connect(host, 21)
         ftp.login(user, password)
@@ -95,6 +101,8 @@ def main():
         ftp.set_pasv(True)
         ftp.cwd(path)  # Must exist. Never invent a fallback.
         root = ftp.pwd()
+        if destination_path(root) != path:
+            raise RuntimeError("FTP working directory differs from the verified destination.")
         print("Publishing only into confirmed destination:", root)
         remote_guard(ftp)
         files = [p for p in DIST.rglob("*") if p.is_file()]
